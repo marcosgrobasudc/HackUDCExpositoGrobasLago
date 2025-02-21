@@ -49,8 +49,11 @@ def guardar_registro_diario(usuario, registro, archivo="registros.json"):
         if usuario not in datos:
             datos[usuario] = {"interacciones": [], "registros_diarios": {}}
         
-        # Guardar el registro diario
-        datos[usuario]["registros_diarios"][fecha_actual] = registro
+        # Si ya existe un registro diario para la fecha, concatenar el nuevo texto
+        if fecha_actual in datos[usuario]["registros_diarios"]:
+            datos[usuario]["registros_diarios"][fecha_actual] += f"\n{registro}"
+        else:
+            datos[usuario]["registros_diarios"][fecha_actual] = registro
         
         # Guardar cambios en el archivo
         with open(archivo, "w", encoding="utf-8") as f:
@@ -59,16 +62,18 @@ def guardar_registro_diario(usuario, registro, archivo="registros.json"):
     except Exception as e:
         print(f"Error guardando el registro diario: {e}")
 
-
 if __name__ == "__main__":
     # Simulación de interacciones
     guardar_interaccion("Juan", "Hoy me siento increíble", {"feliz": 0.9, "emocionado": 0.7})
     guardar_interaccion("Ana", "Estoy un poco cansada", {"cansado": 0.8, "estresado": 0.6})
+    guardar_interaccion("Juan", "Ahora estoy un poco más tranquilo", {"tranquilo": 0.7})
     
     # Simulación de registro diario
     guardar_registro_diario("Juan", "Hoy tuve un gran día en el trabajo.")
     guardar_registro_diario("Ana", "El día fue agotador, pero productivo.")
+    guardar_registro_diario("Juan", "Por la noche salí a cenar con amigos.")
     
-    # Mostrar el contenido del archivo
+    # Mostrar el contenido del archivo de forma legible
     with open("registros.json", "r", encoding="utf-8") as f:
-        print(json.load(f))
+        datos = json.load(f)
+        print(json.dumps(datos, ensure_ascii=False, indent=4))
