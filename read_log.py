@@ -20,45 +20,50 @@ def create_user(user_name, file="records.json"):
         print(f"Error saving the interaction: {e}")
 
 
-def save_chat(user, chat, file="records.json"):
-    """
-    Saves the user's chat interactions with detected emotions and their scores.
-    """
-    try:
-        try:
-            with open(file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            data = {}
-
-        if user not in data:
-            data[user] = {"chat": [], "daily_records": {}}
-        data[user]["chat"] = chat
-
-        with open(file, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-
-    except Exception as e:
-        print(f"Error saving the interaction: {e}")
+# def read_interactions(user_name, text)
+#     context = retrieve_context(text, user_name)
 
 
-def read_chat(user, file="records.json"):
-    """
-    Reads and returns all interactions of the specified user from the file.
-    """
-    try:
-        with open(file, "r", encoding="utf-8") as f:
-            data = json.load(f)
+
+# def save_chat(user, chat, file="records.json"):
+#     """
+#     Saves the user's chat interactions with detected emotions and their scores.
+#     """
+#     try:
+#         try:
+#             with open(file, "r", encoding="utf-8") as f:
+#                 data = json.load(f)
+#         except (FileNotFoundError, json.JSONDecodeError):
+#             data = {}
+
+#         if user not in data:
+#             data[user] = {"chat": [], "daily_records": {}}
+#         data[user]["chat"] = chat
+
+#         with open(file, "w", encoding="utf-8") as f:
+#             json.dump(data, f, ensure_ascii=False, indent=4)
+
+#     except Exception as e:
+#         print(f"Error saving the interaction: {e}")
+
+
+# def read_chat(user, file="records.json"):
+#     """
+#     Reads and returns all interactions of the specified user from the file.
+#     """
+#     try:
+#         with open(file, "r", encoding="utf-8") as f:
+#             data = json.load(f)
         
-        if user in data:
-            return data[user]["chat"]
-        else:
-            return []  # Return an empty list if the user doesn't exist in the data
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []  # Return an empty list if the file is not found or is empty
-    except Exception as e:
-        print(f"Error reading interactions: {e}")
-        return []
+#         if user in data:
+#             return data[user]["chat"]
+#         else:
+#             return []  # Return an empty list if the user doesn't exist in the data
+#     except (FileNotFoundError, json.JSONDecodeError):
+#         return []  # Return an empty list if the file is not found or is empty
+#     except Exception as e:
+#         print(f"Error reading interactions: {e}")
+#         return []
 
 
 def save_daily_record(user, record, emotions, file="records.json"):
