@@ -92,7 +92,7 @@ optimizer = optim.AdamW(model.parameters(), lr=2e-5)
 criterion = nn.MSELoss()
 
 # Entrenamiento
-epochs = 3
+epochs = 10
 for epoch in range(epochs):
     train_loss = train(model, train_dataloader, optimizer, criterion, device)
     print(f"Epoch {epoch+1}, Train Loss: {train_loss:.4f}")
