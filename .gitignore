@@ -171,3 +171,6 @@ cython_debug/
 .pypirc
 .vscode
 records.json
+*.bin
+*.sqlite3
+chroma_db/

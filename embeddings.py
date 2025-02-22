@@ -58,6 +58,7 @@
 
 from sentence_transformers import SentenceTransformer
 import chromadb
+import uuid
 
 # Cargar el modelo de embeddings
 model = SentenceTransformer("intfloat/e5-large-v2")
@@ -69,45 +70,50 @@ collection = client.get_or_create_collection(name="chat_history")
 # Función para guardar un mensaje en la base de datos
 def store_message_emotions(user_name, message):
     embedding = model.encode("passage: " + message).tolist()  # E5 usa "passage: " para documentos
+    message_id = str(uuid.uuid4())
     collection.add(
-        # ids=[message_id],  # ID único
+        ids=[message_id],  # ID único
         embeddings=[embedding],
         metadatas=[{"text": message, "user_name": user_name}]
     )
     print(f"Guardado en la DB: {message} (Usuario: {user_name})")
 
 # Función para recuperar contexto relevante de un usuario específico
-def retrieve_context(query, user_name, top_k=5):
+def retrieve_context(user_name, query, top_k=5):
     query_embedding = model.encode("query: " + query).tolist()  # E5 usa "query: " para consultas
     results = collection.query(query_embeddings=[query_embedding], n_results=top_k)
     
+    # Verificar si hay resultados antes de acceder a los datos
+    if not results or "metadatas" not in results or "texts" not in results:
+        return ["No hay contexto disponible aún."]
+
     # Filtrar los resultados para que solo muestren los mensajes del usuario actual
     context = []
     for res, meta in zip(results["metadatas"][0], results["texts"][0]):
         if meta["user_name"] == user_name:
             context.append(res["text"])
 
-    return context
+    return context if context else ["No se encontró contexto relevante."]
 
-# Simulación de conversación con contexto
-def chat_with_memory(user_input, user_name):
-    # Recuperar contexto relevante para el usuario
-    context = retrieve_context(user_input, user_name)
+# # Simulación de conversación con contexto
+# def chat_with_memory(user_input, user_name):
+#     # Recuperar contexto relevante para el usuario
+#     context = retrieve_context(user_input, user_name)
 
-    # Construir mensaje con contexto
-    full_prompt = f"Contexto relevante:\n{context}\n\nUsuario: {user_input}\nBot:"
+#     # Construir mensaje con contexto
+#     full_prompt = f"Contexto relevante:\n{context}\n\nUsuario: {user_input}\nBot:"
     
-    # Aquí puedes integrar un LLM (ej. GPT) para generar respuestas
-    print("Contexto recuperado:", context)
-    print("\nRespuesta del LLM:", "[Aquí iría la respuesta generada]")
+#     # Aquí puedes integrar un LLM (ej. GPT) para generar respuestas
+#     print("Contexto recuperado:", context)
+#     print("\nRespuesta del LLM:", "[Aquí iría la respuesta generada]")
 
 # Ejemplo de uso
-store_message_emotions("La inteligencia artificial permite automatizar tareas complejas.", "msg_1", "usuario_1")
-store_message_emotions("Existen diferentes tipos de redes neuronales, como CNN y RNN.", "msg_2", "usuario_1")
-store_message_emotions("Las redes neuronales convolucionales son muy eficaces para el procesamiento de imágenes.", "msg_3", "usuario_2")
+# store_message_emotions("La inteligencia artificial permite automatizar tareas complejas.", "msg_1", "usuario_1")
+# store_message_emotions("Existen diferentes tipos de redes neuronales, como CNN y RNN.", "msg_2", "usuario_1")
+# store_message_emotions("Las redes neuronales convolucionales son muy eficaces para el procesamiento de imágenes.", "msg_3", "usuario_2")
 
-# Simulamos una consulta para el usuario_1
-chat_with_memory("¿Qué tipos de redes neuronales existen?", "usuario_1")
+# # Simulamos una consulta para el usuario_1
+# chat_with_memory("¿Qué tipos de redes neuronales existen?", "usuario_1")
 
-# Simulamos una consulta para el usuario_2
-chat_with_memory("¿Qué es una red neuronal convolucional?", "usuario_2")
+# # Simulamos una consulta para el usuario_2
+# chat_with_memory("¿Qué es una red neuronal convolucional?", "usuario_2")

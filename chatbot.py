@@ -2,6 +2,8 @@ from transformers import pipeline
 from read_log import create_user, save_chat, read_chat
 from groq import Groq
 import re
+from embeddings import retrieve_context, store_message_emotions
+
 
 def load_classifier():
     classifier = pipeline(task="text-classification", model="SamLowe/roberta-base-go_emotions", top_k=None)
@@ -50,8 +52,8 @@ def initialize_chatbot():
 
 def format_message(user, text, classifier):
    
-    # interactions = retrieve_context(user, text)  # Lista de diccionarios con 'message', 'emotions', 'timestamp'
-    interactions = ["Hola, hoy estoy muy contento", "Hoy me siento muy motivado para hacer cosas nuevas", "Me siento muy excitado por la llegada de mi amigo"]
+    interactions = retrieve_context(user, text)  # Lista de diccionarios con 'message', 'emotions', 'timestamp'
+    # interactions = ["Hola, hoy estoy muy contento", "Hoy me siento muy motivado para hacer cosas nuevas", "Me siento muy excitado por la llegada de mi amigo"]
     # Construcción del contexto de mensajes anteriores
     context = "Contexto de mensajes anteriores:\n"
     context += "\n".join(interactions)
@@ -60,7 +62,7 @@ def format_message(user, text, classifier):
     emotions_text = ", ".join([f"{emotion} (confianza: {score:.2f})" for emotion, score in emotions.items()])
     message = f"{text} Emociones detectadas: {emotions_text}"
     msg_with_context = context + f"Mensaje actual, al que debes contestar teniendo en cuenta el contexto:\n{message}"
-    # store_message_emotions(user, message)
+    store_message_emotions(user, message)
     return msg_with_context
 
 def chatbot(user, pipe, text, classifier):
@@ -86,7 +88,7 @@ def main_prueba(user):
         q = str(input(">>>"))
 
 
-if __name__ == "__main__":
-    user = "John"
-    create_user(user)
-    main_prueba(user)
+# if __name__ == "__main__":
+#     user = "John"
+#     create_user(user)
+#     main_prueba(user)
