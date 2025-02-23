@@ -41,34 +41,29 @@ def chatbot_wrapper(messages, history=None):
 
 
 if __name__ == "__main__":
-
-    # Crear la interfaz con Gradio
     with gr.Blocks(title="KeleaCare") as app:
         gr.HTML("""<script> document.title = "KeleaCare"; </script>""")
         
-        # Evitar scrollbar vertical y reducir margen superior de las pestañas
-        gr.HTML("""<style> body { overflow: hidden; height: 100vh; margin: 0; padding: 0; } .tabs-container { margin-top: -40px; }</style>""")
-
-        # Componentes de inicio
-        with gr.Column():  # Columna para centrar los elementos verticalmente al principio
+        gr.HTML("""<style> 
+            body { overflow: hidden; height: 100vh; margin: 0; padding: 0; }
+            .tabs-container { margin-top: -40px; }
+            #test_output { max-height: 400px; overflow-y: auto; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        </style>""")
+        
+        with gr.Column():
             imagen = gr.Image(value="https://media-asgard.s3.eu-west-1.amazonaws.com/22/09/15/20cc2074-3d1b-461c-8442-ddff0d14ca2d_kelea.png", 
                               label="", show_label=False, interactive=False,
-                              elem_id="imagen_kelea", image_mode="auto", height=100)  # Imagen inicial centrada
+                              elem_id="imagen_kelea", image_mode="auto", height=100)
             username_input = gr.Textbox(label="Introduce tu nombre de usuario", placeholder="username")
             iniciar_btn = gr.Button("Iniciar")
 
-        # Saludo personalizado (inicialmente oculto) y logo pequeño
         greeting = gr.HTML("")
 
-
-        # Pestañas de opciones (inicialmente ocultas)
         tabs = gr.Tabs(visible=False, elem_classes=["tabs-container"])
         with tabs:
             with gr.TabItem("Chatbot"):
-                # Cargar el chatbot y el clasificador
                 pipe = load_chatbot()
                 classifier = load_classifier()
-
                 chat_interface = gr.ChatInterface(fn=chatbot_wrapper,
                                     type="messages",
                                     chatbot=gr.Chatbot(height=400, max_height=400),
@@ -84,18 +79,11 @@ if __name__ == "__main__":
                 selected_date.change(cargar_registro, inputs=[selected_date, username_input], outputs=entry)
                 guardar_btn.click(guardar_registro, inputs=[selected_date, entry, username_input], outputs=output_registro)
             
-
             with gr.TabItem("Realizar test de BigFive"):
                 analizar_btn = gr.Button("Realizar Análisis Big Five")
-                output_test = gr.Markdown()  # Cambiado a Markdown para aceptar formato
-                output_container = gr.Textbox(
-                    label="Resultados del test",
-                    interactive=False,
-                )
-                analizar_btn.click(fn=analise_big5, inputs=[username_input], outputs=output_container)
+                output_test = gr.Markdown(elem_id="test_output")  
+                analizar_btn.click(fn=analise_big5, inputs=[username_input], outputs=output_test)
 
-        # Botón de inicio
         iniciar_btn.click(iniciar_interfaz, inputs=username_input, outputs=[username_input, iniciar_btn, imagen, greeting, tabs])
 
-    # Lanzar la app
     app.launch(share=True)
