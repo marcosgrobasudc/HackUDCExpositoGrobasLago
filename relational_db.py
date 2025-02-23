@@ -1,91 +1,26 @@
-# import sqlite3
-
-# # Crear la base de datos y la tabla si no existen
-# def create_db():
-#     conn = sqlite3.connect('daily_records.db')
-#     cursor = conn.cursor()
-    
-#     # Crear la tabla si no existe
-#     cursor.execute('''
-#     CREATE TABLE IF NOT EXISTS daily_records (
-#         user_name TEXT NOT NULL,
-#         date TEXT NOT NULL,
-#         record TEXT NOT NULL,
-#         PRIMARY KEY (user_name, date)
-#     )
-#     ''')
-    
-#     conn.commit()
-#     conn.close()
-
-
-# def insert_daily_record(user_name, date, record):
-#     conn = sqlite3.connect('daily_records.db')
-#     cursor = conn.cursor()
-    
-#     # Insertar un nuevo registro en la base de datos
-#     cursor.execute('''
-#     INSERT OR REPLACE INTO daily_records (user_name, date, record)
-#     VALUES (?, ?, ?)
-#     ''', (user_name, date, record))
-    
-#     conn.commit()
-#     conn.close()
-
-# def read_daily_record(user_name, date):
-#     try:
-#         conn = sqlite3.connect('daily_records.db')
-#         cursor = conn.cursor()
-        
-#         # Consultar el registro para el usuario y la fecha
-#         cursor.execute('''
-#         SELECT record FROM daily_records
-#         WHERE user_name = ? AND date = ?
-#         ''', (user_name, date))
-        
-#         # Obtener el resultado
-#         result = cursor.fetchone()
-#         conn.close()
-        
-#         if result:
-#             return result[0]  # Retornar el registro
-#         else:
-#             return None
-#     except Exception as e:
-#         print(f"Error al leer el registro diario: {e}")
-#         return None
-
-
-
-
-# # Llamar a la función para crear la base de datos
-# create_db()
-# # Ejemplo de inserción
-# insert_daily_record("usuario_1", "2025-02-22", "Este es el registro para el 22 de febrero de 2025.")
-
-# # Ejemplo de uso
-# user_name = "usuario_1"
-# current_date = "2025-02-22"
-
-# record = read_daily_record(user_name, current_date)
-# if record:
-#     print("Registro encontrado:", record)
-# else:
-#     print("No se encontró registro para esta fecha.")
-
-
 import sqlite3
 import os
 
 def get_db_connection():
+    """
+    Obtiene una conexión a la base de datos
+
+    Returns:
+    sqlite3.Connection: conexión a la base de datos
+    """
     return sqlite3.connect('daily_records.db')
 
 def create_db():
+    """
+    Crea la base de datos si no existe
+    
+    Returns:
+    None
+    """
     if not os.path.exists('daily_records.db'):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Crear la tabla si no existe
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS daily_records (
             user_name TEXT NOT NULL,
@@ -99,6 +34,17 @@ def create_db():
         conn.close()
 
 def insert_daily_record(date, record, user_name):
+    """
+    Inserta un registro diario en la base de datos
+
+    Args:
+    date (str): fecha del registro
+    record (str): contenido del registro
+    user_name (str): nombre del usuario
+
+    Returns:
+    None
+    """
     create_db()  # Asegurar que la base de datos existe
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -113,6 +59,16 @@ def insert_daily_record(date, record, user_name):
     conn.close()
 
 def read_daily_record(date, user_name):
+    """
+    Lee un registro diario de la base de datos
+
+    Args:
+    date (str): fecha del registro
+    user_name (str): nombre del usuario
+
+    Returns:
+    str: contenido del registro
+    """
     create_db()  # Asegurar que la base de datos existe
     try:
         conn = get_db_connection()
@@ -124,12 +80,11 @@ def read_daily_record(date, user_name):
         WHERE user_name = ? AND date = ?
         ''', (user_name, date))
         
-        # Obtener el resultado
         result = cursor.fetchone()
         conn.close()
         
         if result:
-            return result[0]  # Retornar el registro
+            return result[0]
         else:
             return None
     except Exception as e:
@@ -137,6 +92,15 @@ def read_daily_record(date, user_name):
         return None
 
 def read_all_records(user_name):
+    """
+    Lee todos los registros diarios de un usuario
+
+    Args:
+    user_name (str): nombre del usuario
+
+    Returns:
+    list: lista de tuplas con la fecha y el contenido del registro
+    """
     create_db()  # Asegurar que la base de datos existe
     try:
         conn = get_db_connection()
@@ -153,22 +117,9 @@ def read_all_records(user_name):
         conn.close()
         
         if results:
-            return [(date, record) for date, record in results]  # Retornar todos los registros con sus fechas
+            return [(date, record) for date, record in results]
         else:
             return []
     except Exception as e:
         print(f"Error al leer los registros diarios: {e}")
         return []
-    
-# # Ejemplo de inserción
-# insert_daily_record("usuario_1", "2025-02-22", "Este es el registro para el 22 de febrero de 2025.")
-
-# # Ejemplo de uso
-# user_name = "usuario_1"
-# current_date = "2025-02-22"
-
-# record = read_daily_record(user_name, current_date)
-# if record:
-#     print("Registro encontrado:", record)
-# else:
-#     print("No se encontró registro para esta fecha.")
