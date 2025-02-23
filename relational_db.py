@@ -136,6 +136,30 @@ def read_daily_record(date, user_name):
         print(f"Error al leer el registro diario: {e}")
         return None
 
+def read_all_records(user_name):
+    create_db()  # Asegurar que la base de datos existe
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Consultar todos los registros del usuario ordenados por fecha
+        cursor.execute('''
+        SELECT date, record FROM daily_records
+        WHERE user_name = ?
+        ORDER BY date ASC
+        ''', (user_name,))
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        if results:
+            return [(date, record) for date, record in results]  # Retornar todos los registros con sus fechas
+        else:
+            return []
+    except Exception as e:
+        print(f"Error al leer los registros diarios: {e}")
+        return []
+    
 # # Ejemplo de inserción
 # insert_daily_record("usuario_1", "2025-02-22", "Este es el registro para el 22 de febrero de 2025.")
 
