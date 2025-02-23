@@ -1,22 +1,32 @@
 import numpy as np
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
-# from chatbot import load_chatbot
 import re
 import torch
 from big_five import BETOBigFive
 from transformers import AutoTokenizer, pipeline
-# from embeddings import retrieve_embedding
-# from relational_db import read_all_records
 
-
-# Función para cargar el clasificador de emociones
 def load_classifier():
+    """
+    Cargar el clasificador de emociones
+
+    Returns:
+    classifier: clasificador de emociones
+    """
     classifier = pipeline(task="text-classification", model="finiteautomata/beto-emotion-analysis", top_k=None)
     return classifier
 
-# Función para obtener emociones
 def get_emotion(classifier, sentences):
+    """
+    Obtener el resultado de clasificar las emociones de un texto
+
+    Args:
+    classifier: clasificador de emociones
+    sentences: lista de frases a clasificar
+
+    Returns:
+    result: diccionario con las emociones y su confianza
+    """
     model_outputs = classifier(sentences)
     result = {}
 
@@ -26,10 +36,21 @@ def get_emotion(classifier, sentences):
         result[emotion['label']] = emotion['score']
         if accumulated_score >= 0.7:
             break
-    return result  # Devuelve un diccionario con las emociones y su confianza
+    return result
 
 
 def reduce_embeddings_kmeans(embeddings, texts, n_clusters=5):
+    """
+    Realiza un clustering de los embeddings y selecciona el texto más cercano a cada centroide
+
+    Args:
+    embeddings: matriz de embeddings
+    texts: lista de textos
+    n_clusters: número de clusters
+    
+    Returns:
+    selected_texts: lista de textos
+    """
     kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
     kmeans.fit(embeddings)
    
@@ -45,10 +66,20 @@ def reduce_embeddings_kmeans(embeddings, texts, n_clusters=5):
    
     return selected_texts
 
- 
-# embeddings = matriz (n_textos, dim_embedding)
-# texts = lista de textos originales
 def reduce_chat(embeddings, texts, registry, pipe, n_clusters = 3):
+    """
+    Reducir los textos de un chat a un número menor de textos
+
+    Args:
+    embeddings: matriz de embeddings
+    texts: lista de textos
+    registry: lista de tuplas (fecha, registro)
+    pipe: chatbot
+    n_clusters: número de clusters
+
+    Returns:
+    response: respuesta del chatbot
+    """
     if len(embeddings) < n_clusters:
         reduced_texts = texts
     else:
@@ -62,6 +93,14 @@ def reduce_chat(embeddings, texts, registry, pipe, n_clusters = 3):
 
 
 def get_model_big5():
+    """
+    Cargar el modelo de clasificación de personalidad Big5
+    
+    Returns:
+    model: modelo de clasificación
+    tokenizer: tokenizador
+    device: dispositivo de ejecución
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = BETOBigFive().to(device)
     model.load_state_dict(torch.load("beto_big5.pth", map_location=device))
@@ -69,7 +108,18 @@ def get_model_big5():
     return model, tokenizer, device
  
 def predict_big5(text, model, tokenizer, device):
-    # model, tokenizer, device = get_model_big5()
+    """
+    Predecir los rasgos de personalidad Big5 de un texto
+    
+    Args:
+    text: texto a clasificar
+    model: modelo de clasificación
+    tokenizer: tokenizador
+    device: dispositivo de ejecución
+
+    Returns:
+    logits: logits de la clasificación
+    """
     encoding = tokenizer(text, padding='max_length', truncation=True, max_length=512, return_tensors="pt")
     input_ids = encoding["input_ids"].to(device)
     attention_mask = encoding["attention_mask"].to(device)
@@ -80,10 +130,34 @@ def predict_big5(text, model, tokenizer, device):
     return output.detach().cpu().numpy().flatten()
  
 def map_logits_to_big5(logits):
+    """
+    Mapear los logits de clasificación a los rasgos de personalidad Big5
+    
+    Args:
+    logits: logits de clasificación
+
+    Returns:
+    big5: diccionario con los rasgos de personalidad Big
+    """
     big5 = ["Extroversión", "Amabilidad", "Apertura a la experiencia", "Neuroticismo", "Responsabilidad"]
     return {big5[i]: logits[i] for i in range(5)}
 
 def registry_big5(embeddings, texts, registry, pipe, model, tokenizer, device):
+    """
+    Clasificar la personalidad Big5 de un usuario a partir de un chat y un registro diario
+    
+    Args:
+    embeddings: matriz de embeddings
+    texts: lista de textos
+    registry: lista de tuplas (fecha, registro)
+    pipe: chatbot
+    model: modelo de clasificación
+    tokenizer: tokenizador
+    device: dispositivo de ejecución
+
+    Returns:
+    response: respuesta del chatbot
+    """
     input = reduce_chat(embeddings, texts, registry, pipe, 3)
     logits = predict_big5(input, model, tokenizer, device)
     big5 = map_logits_to_big5(logits)
@@ -94,29 +168,3 @@ def registry_big5(embeddings, texts, registry, pipe, model, tokenizer, device):
     input = [{'role': 'system', 'content': command},{'role': 'user', 'content': message}]
     response = pipe(input)
     return re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
-
-# if __name__ == "__main__":
-#     # Lista de textos (mensajes) de un usuario
-#     texts = [
-#         "Hola, ¿cómo estás? Estoy sintiéndome muy bien hoy.",
-#         "La vida es difícil a veces, pero trato de mantenerme positivo.",
-#         "Ayer fue un día genial, salí con mis amigos y nos divertimos mucho.",
-#         "Últimamente he estado muy estresado por el trabajo.",
-#         "Me encanta leer libros, especialmente novelas de misterio."
-#     ]
-
-#     # Lista de embeddings correspondientes a cada texto (ejemplo ficticio)
-#     embeddings = [
-#         [0.1, 0.02, -0.05, 0.03, 0.07, -0.01, 0.09, -0.04, 0.2, 0.05],  # Embedding de texto 1
-#         [0.03, -0.08, 0.07, 0.1, -0.06, 0.04, -0.02, 0.08, -0.1, 0.06],  # Embedding de texto 2
-#         [0.2, 0.05, 0.03, -0.1, 0.02, -0.03, 0.05, 0.07, -0.02, 0.01],  # Embedding de texto 3
-#         [-0.05, 0.09, -0.02, 0.08, 0.01, -0.04, 0.1, -0.07, 0.03, -0.06],  # Embedding de texto 4
-#         [0.04, -0.03, 0.09, -0.02, 0.05, -0.08, 0.02, 0.1, -0.1, 0.07]   # Embedding de texto 5
-#     ]
-#     pipe = load_chatbot()
-#     model, tokenizer, device = get_model_big5()
-#     user_name = "John"
-#     date = "2022-05-15"
-#     texts, embeddings = retrieve_embedding(user_name)
-#     registry = read_daily_record(date, user_name)
-#     print(registry_big5(embeddings, texts, registry, pipe, model, tokenizer, device))

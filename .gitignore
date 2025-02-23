@@ -174,3 +174,5 @@ records.json
 *.bin
 *.sqlite3
 chroma_db/
+*.db
+.gradio/

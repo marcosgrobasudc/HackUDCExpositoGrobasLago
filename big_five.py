@@ -11,13 +11,30 @@ from torch.optim.lr_scheduler import StepLR
 BETO_MODEL = "dccuchile/bert-base-spanish-wwm-uncased"
 
 class BigFiveDataset(Dataset):
+    """
+    Dataset para el modelo de clasificación de Big Five
+    """
     def __init__(self, df, tokenizer, max_len=512):
+        """
+        Inicializa el dataset
+
+        Args:
+        df: DataFrame con los datos
+        tokenizer: tokenizador de Hugging Face
+        max_len: longitud máxima de los textos
+        """
         self.texts = df['text'].tolist()
         self.labels = df[['Extraversion', 'Agreeableness', 'Openness', 'Neuroticism', 'Conscientiousness']].values
         self.tokenizer = tokenizer
         self.max_len = max_len
 
     def __len__(self):
+        """
+        Retorna la cantidad de ejemplos en el dataset
+
+        Returns:
+        len: cantidad de ejemplos
+        """
         return len(self.texts)
 
     def __getitem__(self, idx):
@@ -32,19 +49,47 @@ class BigFiveDataset(Dataset):
 
 # Modelo basado en BETO
 class BETOBigFive(nn.Module):
+    """
+    Modelo de clasificación de Big Five basado en BETO
+    """
     def __init__(self):
+        """
+        Inicializa el modelo
+        """
         super(BETOBigFive, self).__init__()
         self.beto = AutoModel.from_pretrained(BETO_MODEL)
         self.fc = nn.Linear(self.beto.config.hidden_size, 5)  # 5 dimensiones del Big Five
         self.activation = nn.LeakyReLU()
 
     def forward(self, input_ids, attention_mask):
+        """
+        Propagación hacia adelante del modelo
+        
+        Args:
+        input_ids: IDs de los tokens
+        attention_mask: máscara de atención
+
+        Returns:
+        x: salida del modelo
+        """
         outputs = self.beto(input_ids=input_ids, attention_mask=attention_mask)
         x = self.fc(outputs.pooler_output)
         return self.activation(x)
 
-# Función de entrenamiento
 def train(model, dataloader, optimizer, criterion, device):
+    """
+    Entrenamiento del modelo
+
+    Args:
+    model: modelo a entrenar
+    dataloader: DataLoader con los datos
+    optimizer: optimizador
+    criterion: función de pérdida
+    device: dispositivo de ejecución
+
+    Returns:
+    loss: pérdida promedio
+    """
     model.train()
     total_loss = 0
     for batch in dataloader:
@@ -57,8 +102,19 @@ def train(model, dataloader, optimizer, criterion, device):
         total_loss += loss.item()
     return total_loss / len(dataloader)
 
-# Función de evaluación
 def test(model, dataloader, criterion, device):
+    """
+    Evaluación del modelo
+
+    Args:
+    model: modelo a evaluar
+    dataloader: DataLoader con los datos
+    criterion: función de pérdida
+    device: dispositivo de ejecución
+
+    Returns:
+    loss: pérdida promedio
+    """
     model.eval()
     total_loss = 0
     with torch.no_grad():
