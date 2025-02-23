@@ -78,7 +78,7 @@ def get_emotion(classifier, sentences):
 
 # Función para cargar el chatbot
 def load_chatbot():
-    client = Groq(api_key="clave")
+    client = Groq(api_key="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")
     return lambda messages: client.chat.completions.create(
         model="deepseek-r1-distill-qwen-32b",
         messages=messages
@@ -91,9 +91,15 @@ def initialize_chatbot():
 
 # Función para formatear el mensaje y obtener el contexto
 def format_message(user, text, classifier):
+    global recent_chat
     interactions = retrieve_context(user, text)  # Lista de diccionarios con 'message', 'emotions', 'timestamp'
     context = "Contexto de mensajes anteriores:\n"
     context += "\n".join(interactions)
+
+    context += "\n\nÚltimos mensajes del chat:\n"
+    for recent in recent_chat:
+        context += f"\n\n{recent['role']}: {recent['content']}"
+
 
     emotions = get_emotion(classifier, text)
     emotions_text = ", ".join([f"{emotion} (confianza: {score:.2f})" for emotion, score in emotions.items()])
@@ -104,13 +110,19 @@ def format_message(user, text, classifier):
 
 # Función principal para el chatbot con emociones
 def chatbot(user, pipe, text, classifier):
+    global recent_chat
     chat = initialize_chatbot()
 
     message = format_message(user, text, classifier)
     chat.append({"role": "user", "content": message})
 
     response = pipe(chat)
-    return re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
+    response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
+    recent_chat.append({"role": "user", "content": text})
+    recent_chat.append({"role": "bot", "content": response})
+    while len(recent_chat) > 6:
+        recent_chat.pop(0)
+    return response
 
 # Función para guardar o actualizar el registro diario
 # def guardar_registro(selected_date, entry, username):
@@ -165,6 +177,7 @@ def chatbot_wrapper(messages, history=None):
 
 
 if __name__ == "__main__":
+    recent_chat = []
     # Crear la interfaz con Gradio
     with gr.Blocks(title="KeleaCare") as app:
         gr.HTML("""<script> document.title = "KeleaCare"; </script>""")
