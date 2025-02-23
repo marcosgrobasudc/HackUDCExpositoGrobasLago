@@ -32,3 +32,17 @@ def retrieve_context(user_name, query, top_k=5):
     context = results["metadatas"][0][0]['text']
    
     return context if context else ["No se encontró contexto relevante."]
+
+
+def retrieve_embedding(user_name):
+    # Buscar en la colección los mensajes de un usuario específico
+    results = collection.get(
+        where={"user_name": user_name},  # Filtrar por el usuario
+        include=["embeddings", "metadatas"]  # Obtener embeddings y metadatos
+    )
+ 
+    # Extraer los textos y embeddings
+    messages = [item["text"] for item in results["metadatas"]]
+    embeddings = results["embeddings"]  # Lista de embeddings
+ 
+    return messages, embeddings
