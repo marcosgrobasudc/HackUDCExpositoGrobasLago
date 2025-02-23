@@ -52,6 +52,7 @@ from transformers import pipeline
 from groq import Groq
 import re
 from embeddings import retrieve_context, store_message_emotions
+from relational_db import insert_daily_record, read_daily_record
 import random
 
 # Diccionario para almacenar los registros diarios
@@ -59,7 +60,7 @@ registros = {}
 
 # Función para cargar el clasificador de emociones
 def load_classifier():
-    classifier = pipeline(task="text-classification", model="SamLowe/roberta-base-go_emotions", top_k=None)
+    classifier = pipeline(task="text-classification", model="finiteautomata/beto-emotion-analysis", top_k=None)
     return classifier
 
 # Función para obtener emociones
@@ -112,14 +113,32 @@ def chatbot(user, pipe, text, classifier):
     return re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
 
 # Función para guardar o actualizar el registro diario
+# def guardar_registro(selected_date, entry, username):
+#     print('holaaaaaa', username)
+#     registros[selected_date] = entry
+#     return f"Registro para el día {selected_date} del usuario '{username}': {entry}"
+
+# # Función para cargar el registro si existe
+# def cargar_registro(selected_date):
+#     return registros.get(selected_date, "")
+
+
+# Función para guardar o actualizar el registro diario
 def guardar_registro(selected_date, entry, username):
-    print('holaaaaaa', username)
-    registros[selected_date] = entry
+    print('Guardando registro para el usuario:', username)
+    # Llamar a la función insert_daily_record para guardar el registro en la base de datos
+    insert_daily_record(selected_date, entry, username)
     return f"Registro para el día {selected_date} del usuario '{username}': {entry}"
 
 # Función para cargar el registro si existe
-def cargar_registro(selected_date):
-    return registros.get(selected_date, "")
+def cargar_registro(selected_date, username):
+    # Llamar a la función read_daily_record para obtener el registro de la base de datos
+    record = read_daily_record(selected_date, username)
+    return record
+    # if record:
+    #     return f"Registro para el día {selected_date} del usuario '{username}': {record}"
+    # else:
+    #     return f"No hay registro para el día {selected_date} del usuario '{username}'."
 
 # Función para iniciar la interfaz
 def iniciar_interfaz(name):
@@ -145,58 +164,59 @@ def chatbot_wrapper(messages, history=None):
     return chatbot(username_value, pipe, messages, classifier)
 
 
-# Crear la interfaz con Gradio
-with gr.Blocks(title="KeleaCare") as app:
-    gr.HTML("""<script> document.title = "KeleaCare"; </script>""")
-    
-    # Evitar scrollbar vertical y reducir margen superior de las pestañas
-    gr.HTML("""<style> body { overflow: hidden; height: 100vh; margin: 0; padding: 0; } .tabs-container { margin-top: -40px; }</style>""")
+if __name__ == "__main__":
+    # Crear la interfaz con Gradio
+    with gr.Blocks(title="KeleaCare") as app:
+        gr.HTML("""<script> document.title = "KeleaCare"; </script>""")
+        
+        # Evitar scrollbar vertical y reducir margen superior de las pestañas
+        gr.HTML("""<style> body { overflow: hidden; height: 100vh; margin: 0; padding: 0; } .tabs-container { margin-top: -40px; }</style>""")
 
-    # Componentes de inicio
-    username_input = gr.Textbox(label="Introduce tu nombre de usuario", placeholder="username")
-    # username_input_value=f"Hola {username_input}"
-    iniciar_btn = gr.Button("Iniciar")
+        # Componentes de inicio
+        username_input = gr.Textbox(label="Introduce tu nombre de usuario", placeholder="username")
+        # username_input_value=f"Hola {username_input}"
+        iniciar_btn = gr.Button("Iniciar")
 
-    # Saludo personalizado (inicialmente oculto)
-    greeting = gr.HTML("")  
+        # Saludo personalizado (inicialmente oculto)
+        greeting = gr.HTML("")  
 
-    # Pestañas de opciones (inicialmente ocultas)
-    tabs = gr.Tabs(visible=False, elem_classes=["tabs-container"])
-    with tabs:
-        with gr.TabItem("Chatbot"):
-            # Cargar el chatbot y el clasificador
-            pipe = load_chatbot()
-            classifier = load_classifier()
+        # Pestañas de opciones (inicialmente ocultas)
+        tabs = gr.Tabs(visible=False, elem_classes=["tabs-container"])
+        with tabs:
+            with gr.TabItem("Chatbot"):
+                # Cargar el chatbot y el clasificador
+                pipe = load_chatbot()
+                classifier = load_classifier()
 
-            chat_interface = gr.ChatInterface(fn=chatbot_wrapper,
-                                  type="messages",
-                                  chatbot=gr.Chatbot(height=400, max_height=400),
-                                  textbox=gr.Textbox(placeholder="Escribe tu pregunta", container=False, scale=7))
+                chat_interface = gr.ChatInterface(fn=chatbot_wrapper,
+                                    type="messages",
+                                    chatbot=gr.Chatbot(height=400, max_height=400),
+                                    textbox=gr.Textbox(placeholder="Escribe tu pregunta", container=False, scale=7))
 
-            # # Interfaz de chat
-            # chat_interface = gr.ChatInterface(fn=lambda msg: chatbot(username_input.value, pipe, msg, classifier),
-            #                                   type="messages",
-            #                                   chatbot=gr.Chatbot(height=400, max_height=400),
-            #                                   textbox=gr.Textbox(placeholder="Escribe tu pregunta", container=False, scale=7))
+                # # Interfaz de chat
+                # chat_interface = gr.ChatInterface(fn=lambda msg: chatbot(username_input.value, pipe, msg, classifier),
+                #                                   type="messages",
+                #                                   chatbot=gr.Chatbot(height=400, max_height=400),
+                #                                   textbox=gr.Textbox(placeholder="Escribe tu pregunta", container=False, scale=7))
 
-        with gr.TabItem("Registro Diario"):
-            fechas_validas = generar_fechas_validas()
-            selected_date = gr.Dropdown(label="Selecciona la fecha", choices=fechas_validas, value=date.today().strftime('%Y-%m-%d'))
-            entry = gr.Textbox(label="Escribe tu registro diario...", placeholder="¿Cómo te sientes hoy?")
-            output_registro = gr.Textbox(label="")
-            guardar_btn = gr.Button("Guardar")
+            with gr.TabItem("Registro Diario"):
+                fechas_validas = generar_fechas_validas()
+                selected_date = gr.Dropdown(label="Selecciona la fecha", choices=fechas_validas, value=date.today().strftime('%Y-%m-%d'))
+                entry = gr.Textbox(label="Escribe tu registro diario...", placeholder="¿Cómo te sientes hoy?")
+                output_registro = gr.Textbox(label="")
+                guardar_btn = gr.Button("Guardar")
+                
+                selected_date.change(cargar_registro, inputs=[selected_date, username_input], outputs=entry)
+                guardar_btn.click(guardar_registro, inputs=[selected_date, entry, username_input], outputs=output_registro)
             
-            selected_date.change(cargar_registro, inputs=selected_date, outputs=entry)
-            guardar_btn.click(guardar_registro, inputs=[selected_date, entry, username_input], outputs=output_registro)
+            with gr.TabItem("Realizar test de BigFive"):
+                test_results = gr.Textbox(label="Resultados del test BigFive...")
+                output_test = gr.Textbox(label="Resultados del test")
+                test_results.submit(lambda tr, u: f"Test BigFive completado con los siguientes resultados de {u}: {tr}",
+                                    inputs=[test_results, username_input], outputs=output_test)
 
-        with gr.TabItem("Realizar test de BigFive"):
-            test_results = gr.Textbox(label="Resultados del test BigFive...")
-            output_test = gr.Textbox(label="Resultados del test")
-            test_results.submit(lambda tr, u: f"Test BigFive completado con los siguientes resultados de {u}: {tr}",
-                                inputs=[test_results, username_input], outputs=output_test)
+        # Botón de inicio
+        iniciar_btn.click(iniciar_interfaz, inputs=username_input, outputs=[username_input, iniciar_btn, greeting, tabs])
 
-    # Botón de inicio
-    iniciar_btn.click(iniciar_interfaz, inputs=username_input, outputs=[username_input, iniciar_btn, greeting, tabs])
-
-# Lanzar la app
-app.launch(share=True)
+    # Lanzar la app
+    app.launch(share=True)
