@@ -1,62 +1,35 @@
-from transformers import pipeline
-from read_log import create_user, save_chat, read_chat
 from groq import Groq
 import re
-from embeddings import retrieve_context, store_message_emotions
+from embeddings import retrieve_context, retrieve_embedding, store_message_emotions
+from classify import get_emotion, get_model_big5, registry_big5
+from relational_db import read_all_records
+recent_chat = []
 
-
-def load_classifier():
-    classifier = pipeline(task="text-classification", model="SamLowe/roberta-base-go_emotions", top_k=None)
-    return classifier
-
-def get_emotion(classifier, sentences):
-    model_outputs = classifier(sentences)
-    result = {}
-
-    accumulated_score = 0.0
-
-    for emotion in model_outputs[0]:
-        accumulated_score += emotion['score']
-        
-        result[emotion['label']] = emotion['score']
-        
-        if accumulated_score >= 0.7:
-            break
-    return result # devuelve un diccionario con las emociones y su confianza
-
-
+# Función para cargar el chatbot
 def load_chatbot():
-    client = Groq(api_key="clave")
- 
-    # pipe = pipeline("text-generation", model="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B")
+    client = Groq(api_key="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")
     return lambda messages: client.chat.completions.create(
         model="deepseek-r1-distill-qwen-32b",
-        messages=messages      
+        messages=messages
     ).choices[0].message.content
 
+# Función para inicializar el chatbot
 def initialize_chatbot():
-    chat = [{"role": "system", "content": "Eres un asistente que contesta de forma empática según las emociones de la gente, las cuales se añadirán al final de cada consulta junto con un nivel de confianza para cada una. Las emociones no forman parte de la consulta, solo son una guía para ayudarte a responder de forma adecuada."}]
+    chat = [{"role": "system", "content": "Eres un asistente llamado KeleaCare Assistant que contesta de forma empática según las emociones de la gente, las cuales se añadirán al final de cada consulta junto con un nivel de confianza para cada una. Las emociones no forman parte de la consulta, solo son una guía para ayudarte a responder de forma adecuada."}]
     return chat
 
-# def chatbot(pipe, text, chat, classifier):
-#     actual_emotions = get_emotion(classifier, text)
-#     emotions_text = ", ".join([f"{emotion} (confianza: {score:.2f})" for emotion, score in actual_emotions.items()])
-#     message = {"role": "user", "content": text + f"\nEmociones: {emotions_text}"}
- 
-#     chat.append(message)
-#     response = pipe(chat)[0]['generated_text'][-1]['content']
-#     response = response.split('</think>')[-1]
-#     chat.append({'role': 'assistant', 'content': response})
- 
-#     return chat
 
+# Función para formatear el mensaje y obtener el contexto
 def format_message(user, text, classifier):
-   
+    global recent_chat
     interactions = retrieve_context(user, text)  # Lista de diccionarios con 'message', 'emotions', 'timestamp'
-    # interactions = ["Hola, hoy estoy muy contento", "Hoy me siento muy motivado para hacer cosas nuevas", "Me siento muy excitado por la llegada de mi amigo"]
-    # Construcción del contexto de mensajes anteriores
     context = "Contexto de mensajes anteriores:\n"
     context += "\n".join(interactions)
+
+    context += "\n\nÚltimos mensajes del chat:\n"
+    for recent in recent_chat:
+        context += f"\n\n{recent['role']}: {recent['content']}"
+
 
     emotions = get_emotion(classifier, text)
     emotions_text = ", ".join([f"{emotion} (confianza: {score:.2f})" for emotion, score in emotions.items()])
@@ -65,30 +38,35 @@ def format_message(user, text, classifier):
     store_message_emotions(user, message)
     return msg_with_context
 
+# Función principal para el chatbot con emociones
 def chatbot(user, pipe, text, classifier):
+    global recent_chat
     chat = initialize_chatbot()
 
     message = format_message(user, text, classifier)
     chat.append({"role": "user", "content": message})
 
     response = pipe(chat)
-    return re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
+    response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
+    recent_chat.append({"role": "user", "content": text})
+    recent_chat.append({"role": "bot", "content": response})
+    while len(recent_chat) > 6:
+        recent_chat.pop(0)
+    return response
 
 
-def main_prueba(user):
-
+def analise_big5(username_value):
     pipe = load_chatbot()
-    classifier = load_classifier()
-
-    q = str(input(">>>"))
-
-    while q != "exit":
-        response = chatbot(user, pipe, q, classifier)
-        print(response)
-        q = str(input(">>>"))
-
-
-# if __name__ == "__main__":
-#     user = "John"
-#     create_user(user)
-#     main_prueba(user)
+    model, tokenizer, device = get_model_big5()
+    
+    # Obtener todos los registros y embeddings del usuario
+    records = read_all_records(username_value)
+    # texts = []
+    # embeddings = []
+    
+    # for date, record in records:
+    texts, embeddings = retrieve_embedding(username_value)
+    # texts.append(text)
+    # embeddings.append(embedding)
+    
+    return registry_big5(embeddings, texts, records, pipe, model, tokenizer, device)
