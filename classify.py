@@ -90,7 +90,7 @@ def registry_big5(embeddings, texts, registry, pipe, model, tokenizer, device):
     message=""
     for personality, score in big5.items():
         message += f"{personality}: {score:.2f}\n"
-    command = 'Eres un asistente que habla en ESPAÑOL. Describe la personalidad y forma de ser del usuario y clasifica su personalidad según Big5. Se te proporcionan intervenciones del usuario en un chat y un registro diario de su estado. También se te proporciona una puntuación para cada rasgo de la personalidad del usuario. Tienes que basarte en esas puntuaciones, pero es muy importante que NO las menciones en ningún momento. En tu respuesta, puedes hacer referencia al chat y al registro. Ve explicando cómo es el usuario en cada uno de los 5 rasgos de Big5, con un grado de pertenencia a ese rasgo (bajo, medio, alto, muy alto). Puedes utilizar emoticonos en los títulos.'
+    command = 'Eres un asistente que habla en ESPAÑOL. Describe la personalidad y forma de ser del usuario y clasifica su personalidad según Big5. Se te proporcionan intervenciones del usuario en un chat y un registro diario de su estado. También se te proporciona una puntuación para cada rasgo de la personalidad del usuario. Tienes que basarte en esas puntuaciones, pero es muy importante que NO las menciones en ningún momento. En tu respuesta, puedes hacer referencia al chat y al registro, pero NO inventes datos. Ve explicando cómo es el usuario en cada uno de los 5 rasgos de Big5, con un grado de pertenencia a ese rasgo (bajo, medio, alto, muy alto). Puedes utilizar emoticonos en los títulos.'
     input = [{'role': 'system', 'content': command},{'role': 'user', 'content': message}]
     response = pipe(input)
     return re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
