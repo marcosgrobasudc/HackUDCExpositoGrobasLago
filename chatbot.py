@@ -4,7 +4,7 @@ from embeddings import retrieve_context, retrieve_embedding, store_message_emoti
 from classify import get_emotion, get_model_big5, registry_big5
 from relational_db import read_all_records
 
-recent_chat = []
+recent_chat = {}
 
 def load_chatbot():
     """
@@ -13,7 +13,7 @@ def load_chatbot():
     Returns:
     function: función que recibe una lista de mensajes y devuelve la respuesta del chatbot
     """
-    client = Groq(api_key=None) # Poner api_key de Groq
+    client = Groq(api_key="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") # Poner api_key de Groq
     return lambda messages: client.chat.completions.create(
         model="deepseek-r1-distill-qwen-32b",
         messages=messages
@@ -47,7 +47,7 @@ def format_message(user, text, classifier):
     context += "\n".join(interactions)
 
     context += "\n\nÚltimos mensajes del chat:\n"
-    for recent in recent_chat:
+    for recent in recent_chat[user]:
         context += f"\n\n{recent['role']}: {recent['content']}"
 
 
@@ -72,6 +72,7 @@ def chatbot(user, pipe, text, classifier):
     str: respuesta
     """
     global recent_chat
+    recent_chat.setdefault(user, [])
     chat = initialize_chatbot()
 
     message = format_message(user, text, classifier)
@@ -79,10 +80,10 @@ def chatbot(user, pipe, text, classifier):
 
     response = pipe(chat)
     response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
-    recent_chat.append({"role": "user", "content": text})
-    recent_chat.append({"role": "bot", "content": response})
-    while len(recent_chat) > 6:
-        recent_chat.pop(0)
+    recent_chat[user].append({"role": "user", "content": text})
+    recent_chat[user].append({"role": "bot", "content": response})
+    while len(recent_chat[user]) > 6:
+        recent_chat[user].pop(0)
     return response
 
 
